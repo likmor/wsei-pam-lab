@@ -1,6 +1,5 @@
 package pl.wsei.pam.lab03
 
-import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.GridLayout
@@ -27,35 +26,7 @@ class MemoryBoardView(
     )
 
     init {
-        val shuffledIcons: MutableList<Int> = mutableListOf<Int>().also {
-            it.addAll(icons.subList(0, cols * rows / 2))
-            it.addAll(icons.subList(0, cols * rows / 2))
-
-            it.shuffle()
-        }
-
-        // tu umieść kod pętli tworzący wszystkie karty, który jest obecnie
-        // w aktywności Lab03Activity
-        for (r in 0 until rows) {
-            for (c in 0 until cols) {
-                val btn = ImageButton(gridLayout.context).also {
-                    it.tag = "${r}x${c}"
-                    val layoutParams = GridLayout.LayoutParams()
-                    it.setImageResource(deckResource)
-                    layoutParams.width = 0
-                    layoutParams.height = 0
-                    layoutParams.setGravity(Gravity.CENTER)
-                    layoutParams.columnSpec = GridLayout.spec(c, 1, 1f)
-                    layoutParams.rowSpec = GridLayout.spec(r, 1, 1f)
-                    it.layoutParams = layoutParams
-                    gridLayout.addView(it)
-
-                    val tile = addTile(it, shuffledIcons.removeAt(0))
-                }
-
-
-            }
-        }
+        generateBoard()
     }
 
     private var onGameChangeStateListener: (MemoryGameEvent) -> Unit = { (e) -> }
@@ -78,9 +49,75 @@ class MemoryBoardView(
         onGameChangeStateListener = listener
     }
 
-    private fun addTile(button: ImageButton, resourceImage: Int) {
+    private fun addTile(button: ImageButton, resourceImage: Int, revealed: Boolean = false) {
         button.setOnClickListener(::onClickTile)
         val tile = Tile(button, resourceImage, deckResource)
+        tile.revealed = revealed
         tiles[button.tag.toString()] = tile
+
     }
+
+    fun getState(): List<Int> {
+        return tiles.map { (string, tile) -> if (tile.revealed) tile.tileResource else -1 }
+
+    }
+
+    fun setState(state: IntArray?) {
+        gridLayout.removeAllViewsInLayout()
+        generateBoard(state)
+        var revealed = 0;
+        if (state != null) {
+            revealed = state.count { it != -1 }
+        }
+        logic.matches = revealed / 2
+    }
+
+    private fun generateBoard(state: IntArray? = null) {
+
+        val shuffledIcons: MutableList<Int> = mutableListOf<Int>().also {
+            it.addAll(icons.subList(0, cols * rows / 2))
+            it.addAll(icons.subList(0, cols * rows / 2))
+
+            it.shuffle()
+            if (state != null) {
+                val revealedIcons = state.filter { it != -1 }
+                it.removeAll { el -> el in revealedIcons }
+            }
+        }
+
+        var stateIterator = 0
+
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                val btn = ImageButton(gridLayout.context).also {
+                    it.tag = "${r}x${c}"
+                    val layoutParams = GridLayout.LayoutParams()
+                    it.setImageResource(deckResource)
+                    layoutParams.width = 0
+                    layoutParams.height = 0
+                    layoutParams.setGravity(Gravity.CENTER)
+                    layoutParams.columnSpec = GridLayout.spec(c, 1, 1f)
+                    layoutParams.rowSpec = GridLayout.spec(r, 1, 1f)
+                    it.layoutParams = layoutParams
+                    gridLayout.addView(it)
+
+                    if (state == null) {
+                        val tile = addTile(it, shuffledIcons.removeAt(0))
+
+                    } else {
+                        if (state[stateIterator] != -1) {
+                            val tile = addTile(it, state[stateIterator], true)
+                        } else {
+                            val tile = addTile(it, shuffledIcons.removeAt(0))
+                        }
+                        stateIterator++
+                    }
+
+                }
+
+            }
+        }
+    }
+
 }
+

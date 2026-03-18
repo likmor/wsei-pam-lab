@@ -1,9 +1,7 @@
 package pl.wsei.pam.lab03
 
 import android.os.Bundle
-import android.view.Gravity
 import android.widget.GridLayout
-import android.widget.ImageButton
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -26,17 +24,23 @@ class Lab03Activity : AppCompatActivity() {
             insets
         }
 
+
+
         mBoard = findViewById(R.id.memory_game)
         val size = intent.getIntArrayExtra("size") ?: intArrayOf(3, 3)
 
-        val row = size[0]
-        val col = size[1]
+        val col = size[0]
+        val row = size[1]
+
 
         mBoard.columnCount = col
         mBoard.rowCount = row
 
         mBoardModel = MemoryBoardView(mBoard, col, row)
-
+        if (savedInstanceState != null) {
+            val state = savedInstanceState.getIntArray("state")
+            mBoardModel.setState(state)
+        }
         mBoardModel.setOnGameChangeListener { e ->
             run {
                 when (e.state) {
@@ -62,10 +66,18 @@ class Lab03Activity : AppCompatActivity() {
                     }
 
                     GameStates.Finished -> {
+                        e.tiles.forEach { it.revealed = true }
                         Toast.makeText(this, "Game finished", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
+    }
+
+    override fun onSaveInstanceState(
+        outState: Bundle
+    ) {
+        super.onSaveInstanceState(outState)
+        outState.putIntArray("state", mBoardModel.getState().toIntArray())
     }
 }

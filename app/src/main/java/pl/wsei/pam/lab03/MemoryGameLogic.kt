@@ -4,7 +4,7 @@ class MemoryGameLogic(private val maxMatches: Int) {
 
     private var valueFunctions: MutableList<() -> Int> = mutableListOf()
 
-    private var matches: Int = 0
+    public var matches: Int = 0
 
     fun process(value: () -> Int):  GameStates{
         if (valueFunctions.size < 1) {
