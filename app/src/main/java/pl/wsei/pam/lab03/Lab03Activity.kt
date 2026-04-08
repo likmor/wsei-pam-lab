@@ -1,6 +1,11 @@
 package pl.wsei.pam.lab03
 
+import android.media.MediaPlayer
 import android.os.Bundle
+import android.util.Log
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.widget.GridLayout
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -10,10 +15,14 @@ import androidx.core.view.WindowInsetsCompat
 import pl.wsei.pam.lab01.R
 import java.util.Timer
 import kotlin.concurrent.schedule
+import kotlin.math.log
 
 class Lab03Activity : AppCompatActivity() {
     lateinit var mBoard: GridLayout
+    lateinit var completionPlayer: MediaPlayer
+    lateinit var negativePLayer: MediaPlayer
     lateinit var mBoardModel: MemoryBoardView
+    var isSound = true
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -49,29 +58,56 @@ class Lab03Activity : AppCompatActivity() {
                     }
 
                     GameStates.Match -> {
-                        e.tiles.forEach { it.revealed = true }
+                        if (isSound) completionPlayer.start()
+                        mBoardModel.isLocked = true
 
+                        e.tiles.forEach {
+                            it.revealed = true
+
+                            it.playMatchAnimation { mBoardModel.isLocked = false }
+                        }
                     }
 
                     GameStates.NoMatch -> {
+                        if (isSound) negativePLayer.start()
+
+                        mBoardModel.isLocked = true
+
                         e.tiles.forEach {
                             it.revealed = true
-                            Timer().schedule(2000) {
-                                runOnUiThread {
-                                    it.revealed = false
-                                }
+                            it.playNoMatchAnimation {
+                                mBoardModel.isLocked = false
+                                it.revealed = false
                             }
+
                         }
 
                     }
 
                     GameStates.Finished -> {
-                        e.tiles.forEach { it.revealed = true }
+                        if (isSound) completionPlayer.start()
+                        e.tiles.forEach {
+                            it.revealed = true;
+                            it.playMatchAnimation { mBoardModel.isLocked = false }
+                        }
                         Toast.makeText(this, "Game finished", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
+    }
+
+    override protected fun onResume() {
+        super.onResume()
+        completionPlayer = MediaPlayer.create(applicationContext, R.raw.completion)
+        negativePLayer = MediaPlayer.create(applicationContext, R.raw.negative_guitar)
+    }
+
+
+    override protected fun onPause() {
+        super.onPause();
+        completionPlayer.release()
+        negativePLayer.release()
     }
 
     override fun onSaveInstanceState(
@@ -80,4 +116,29 @@ class Lab03Activity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
         outState.putIntArray("state", mBoardModel.getState().toIntArray())
     }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.board_activity_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.board_activity_sound -> {
+                if (isSound) {
+                    Toast.makeText(this, "Sound turn off", Toast.LENGTH_SHORT).show()
+                    item.setIcon(R.drawable.speaker_muted)
+                    isSound = false
+                } else {
+                    Toast.makeText(this, "Sound turn on", Toast.LENGTH_SHORT).show()
+                    item.setIcon(R.drawable.speaker_icon)
+                    isSound = true
+                }
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
 }

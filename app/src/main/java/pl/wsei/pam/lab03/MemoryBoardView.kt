@@ -14,6 +14,7 @@ class MemoryBoardView(
 ) {
     private val tiles: MutableMap<String, Tile> = mutableMapOf()
     private val deckResource: Int = R.drawable.deck
+    public var isLocked = false
 
     private val icons: List<Int> = listOf(
         R.drawable.baseline_music_note_24,
@@ -34,7 +35,10 @@ class MemoryBoardView(
     private val logic: MemoryGameLogic = MemoryGameLogic(cols * rows / 2)
 
     private fun onClickTile(v: View) {
-        val tile = tiles[v.tag]
+        if (isLocked) return
+        val tile = tiles[v.tag] ?: return
+        if (tile.revealed) return
+        if (matchedPair.contains(tile)) return
         matchedPair.push(tile)
         val matchResult = logic.process {
             tile?.tileResource ?: -1
@@ -52,6 +56,7 @@ class MemoryBoardView(
     private fun addTile(button: ImageButton, resourceImage: Int, revealed: Boolean = false) {
         button.setOnClickListener(::onClickTile)
         val tile = Tile(button, resourceImage, deckResource)
+        if (revealed) tile.setAlpha(0f)
         tile.revealed = revealed
         tiles[button.tag.toString()] = tile
 
@@ -103,7 +108,6 @@ class MemoryBoardView(
 
                     if (state == null) {
                         val tile = addTile(it, shuffledIcons.removeAt(0))
-
                     } else {
                         if (state[stateIterator] != -1) {
                             val tile = addTile(it, state[stateIterator], true)
