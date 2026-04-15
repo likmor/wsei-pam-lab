@@ -179,6 +179,12 @@ object AppViewModelProvider {
                 repository =  todoApplication().container.todoTaskRepository
             )
         }
+        initializer {
+            FormViewModel(
+                repository = todoApplication().container.todoTaskRepository,
+                dateProvider = todoApplication().container.dateProvider
+            )
+        }
     }
 }
 
@@ -187,7 +193,10 @@ fun CreationExtras.todoApplication(): TodoApplication {
     return app as TodoApplication
 }
 
-class FormViewModel(private val repository: TodoTaskRepository) : ViewModel() {
+class FormViewModel(
+    private val repository: TodoTaskRepository,
+    private val dateProvider: CurrentDateProvider
+) : ViewModel() {
 
     var todoTaskUiState by mutableStateOf(TodoTaskUiState())
         private set
@@ -199,13 +208,25 @@ class FormViewModel(private val repository: TodoTaskRepository) : ViewModel() {
     }
 
     fun updateUiState(todoTaskForm: TodoTaskForm) {
-        todoTaskUiState = TodoTaskUiState(todoTask = todoTaskForm, isValid = validate(todoTaskForm))
+        todoTaskUiState = TodoTaskUiState(
+            todoTask = todoTaskForm,
+            isValid = validate(todoTaskForm)
+        )
     }
 
-    private fun validate(uiState: TodoTaskForm = todoTaskUiState.todoTask): Boolean {
-        return with(uiState) {
-            title.isNotBlank()
+    fun validate(uiState: TodoTaskForm = todoTaskUiState.todoTask): Boolean {
+        var form = todoTaskUiState.todoTask
+
+
+        val deadlineDate = LocalDateConverter.fromMillis(uiState.deadline)
+        var isValid = deadlineDate.isAfter(dateProvider.currentDate)
+        if (!isValid) {
+            form = form.copy(Error = "Date error")
+            isValid = false
         }
+
+        todoTaskUiState = todoTaskUiState.copy(todoTask = form)
+        return isValid
     }
 }
 
@@ -219,7 +240,8 @@ data class TodoTaskForm(
     val title: String = "",
     val deadline: Long = LocalDateConverter.toMillis(LocalDate.now()),
     val isDone: Boolean = false,
-    val priority: String = Priority.Low.name
+    val priority: String = Priority.Low.name,
+    val Error: String? = null,
 )
 
 fun TodoTask.toTodoTaskUiState(isValid: Boolean = false): TodoTaskUiState = TodoTaskUiState(

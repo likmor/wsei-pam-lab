@@ -26,10 +26,22 @@
         android:layout_height="wrap_content"
         android:onClick="onClickMainBtnRunLab02"
         android:text="@string/lab02"
+        app:layout_constraintBottom_toTopOf="@+id/mainBtnRunLab03"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/mainBtnRunLab01" />
+
+    <Button
+        android:id="@+id/mainBtnRunLab03"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="onClickMainBtnRunLab03"
+        android:text="@string/lab03"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/mainBtnRunLab01"
+        app:layout_constraintTop_toBottomOf="@+id/mainBtnRunLab02"
         app:layout_constraintVertical_bias="0.5" />
 </androidx.constraintlayout.widget.ConstraintLayout>

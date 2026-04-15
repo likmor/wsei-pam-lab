@@ -11,9 +11,4 @@
     app:flow_horizontalGap="16dp"
     app:flow_verticalGap="16dp">
 
-    <ProgressBar
-        android:id="@+id/progressBar"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
 </LinearLayout>
