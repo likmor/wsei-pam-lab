@@ -84,6 +84,7 @@ import pl.wsei.pam.lab06.data.FormViewModel
 import pl.wsei.pam.lab06.data.ListViewModel
 import pl.wsei.pam.lab06.data.LocalDateConverter
 import pl.wsei.pam.lab06.data.TodoApplication
+import pl.wsei.pam.lab06.data.TodoTask
 import pl.wsei.pam.lab06.data.TodoTaskForm
 import pl.wsei.pam.lab06.data.TodoTaskUiState
 import pl.wsei.pam.lab06.ui.theme.Lab01Theme
@@ -118,7 +119,44 @@ class MainActivity : ComponentActivity() {
             pendingIntent
         )
     }
+    fun rescheduleAlarm(tasks: List<TodoTask>) {
+        cancelAlarm()
 
+        val nearestTask = tasks
+            .filter { !it.isDone }
+            .minByOrNull { it.deadline }
+            ?: return
+
+        scheduleRepeatingAlarm(LocalDateConverter.toMillis(nearestTask.deadline))
+    }
+    fun scheduleRepeatingAlarm(deadlineMillis: Long) {
+        val triggerTime = deadlineMillis - 24 * 60 * 60 * 1000L
+        val intervalMillis = 4 * 60 * 60 * 1000L
+
+        val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        alarmManager.setInexactRepeating(
+            AlarmManager.RTC_WAKEUP,
+            triggerTime,
+            intervalMillis,
+            buildAlarmPendingIntent()
+        )
+    }
+    fun cancelAlarm() {
+        val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(buildAlarmPendingIntent())
+    }
+    private fun buildAlarmPendingIntent(): PendingIntent {
+        val intent = Intent(applicationContext, NotificationBroadcastReceiver::class.java).apply {
+            putExtra(titleExtra, "Deadline")
+            putExtra(messageExtra, "Zbliża się termin zakończenia zadania")
+        }
+        return PendingIntent.getBroadcast(
+            applicationContext,
+            notificationID,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
     private fun createNotificationChannel() {
         val name = "Lab06 channel"
         val descriptionText = "Lab06 is channel for notifications for approaching tasks."
@@ -356,13 +394,11 @@ fun TodoTaskInputForm(
     item: TodoTaskForm,
     modifier: Modifier = Modifier,
     onValueChange: (TodoTaskForm) -> Unit = {},
-//    enabled: Boolean = true
 ) {
     val priorities = Priority.entries.toList()
 
     Column(modifier = modifier) {
 
-        // Tytuł
         Text("Tytuł zadania", fontWeight = FontWeight.Bold)
         TextField(
             value = item.title,
@@ -370,7 +406,6 @@ fun TodoTaskInputForm(
             modifier = Modifier
         )
 
-        // Deadline
         val datePickerState = rememberDatePickerState(
             initialDisplayMode = DisplayMode.Picker,
             yearRange = IntRange(2000, 2030),
@@ -400,7 +435,10 @@ fun TodoTaskInputForm(
                 confirmButton = {
                     Button(onClick = {
                         showDialog = false
-                        onValueChange(item.copy(deadline = datePickerState.selectedDateMillis!!))
+                        onValueChange(item.copy(
+                            deadline = datePickerState.selectedDateMillis!!,
+                            Error = null
+                        ))
                     }) {
                         Text("Pick")
                     }
@@ -410,7 +448,6 @@ fun TodoTaskInputForm(
             }
         }
 
-        // isDone
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -421,7 +458,6 @@ fun TodoTaskInputForm(
             Text("Ukończone")
         }
 
-        // Priorytet
         Text("Priorytet", fontWeight = FontWeight.Bold)
         priorities.forEach { priority ->
             Row(
@@ -462,9 +498,11 @@ fun TodoTaskInputBody(
 @Composable
 fun FormScreen(
     navController: NavController,
-    viewModel: FormViewModel = viewModel(factory = AppViewModelProvider.Factory)
+    viewModel: FormViewModel = viewModel(factory = AppViewModelProvider.Factory),
+    listViewModel: ListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val listUiState by listViewModel.listUiState.collectAsState()
 
     Scaffold(
         contentWindowInsets = WindowInsets(0),
@@ -478,6 +516,11 @@ fun FormScreen(
                     if (viewModel.validate()) {
                         coroutineScope.launch {
                             viewModel.save()
+                            val isDone = viewModel.todoTaskUiState.todoTask.isDone
+                            if (!isDone) {
+                                (navController.context as? MainActivity)
+                                    ?.rescheduleAlarm(listUiState.items)
+                            }
                             navController.navigate("list")
                         }
                     }
@@ -493,119 +536,3 @@ fun FormScreen(
         )
     }
 }
-
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun FormScreen(navController: NavController) {
-//    val datePickerState = rememberDatePickerState()
-//    val showDialog = rememberSaveable { mutableStateOf(false) }
-//    var title by rememberSaveable { mutableStateOf("") }
-////    var priority by rememberSaveable { mutableStateOf("") }
-//    var isDone by rememberSaveable { mutableStateOf(false) }
-//
-//    val priorities = listOf("Low", "Medium", "High")
-//    var selectedPriority by rememberSaveable { mutableStateOf(priorities[0]) }
-//    var expanded by remember { mutableStateOf(false) }
-//    if (showDialog.value) {
-//        DatePickerDialog(
-//            onDismissRequest = { showDialog.value = false },
-//            confirmButton = {
-//                TextButton(onClick = { showDialog.value = false }) {
-//                    Text("Ok")
-//                }
-//            },
-//            dismissButton = {
-//                TextButton(onClick = { showDialog.value = false }) {
-//                    Text("Cancel")
-//                }
-//            }
-//        ) {
-//            DatePicker(state = datePickerState)
-//        }
-//    }
-//    Scaffold(
-//        topBar = {
-//            AppTopBar(
-//                navController = navController,
-//                title = "Form",
-//                showBackIcon = true,
-//                route = "list"
-//            )
-//        },
-//        content = {
-//            LazyColumn(modifier = Modifier.padding(it)) {
-//                item() {
-//                    Text("Tytuł")
-//                    TextField(
-//                        value = title,
-//                        onValueChange = { title = it },
-//                        modifier = Modifier.fillMaxWidth(),
-//                        singleLine = true
-//                    )
-//                }
-//                item() {
-//
-//
-//                    Text("Priorytet")
-//
-//                    ExposedDropdownMenuBox(
-//                        expanded = expanded,
-//                        onExpandedChange = { expanded = !expanded }
-//                    ) {
-//                        OutlinedTextField(
-//                            value = selectedPriority,
-//                            onValueChange = {},
-//                            readOnly = true,
-//                            modifier = Modifier
-//                                .menuAnchor()
-//                                .fillMaxWidth(),
-//                            trailingIcon = {
-//                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-//                            }
-//                        )
-//
-//                        ExposedDropdownMenu(
-//                            expanded = expanded,
-//                            onDismissRequest = { expanded = false }
-//                        ) {
-//                            priorities.forEach { priority ->
-//                                DropdownMenuItem(
-//                                    text = { Text(priority) },
-//                                    onClick = {
-//                                        selectedPriority = priority
-//                                        expanded = false
-//                                    }
-//                                )
-//                            }
-//                        }
-//                    }
-//                }
-//                item() {
-//                    Text("isDone")
-//                    Checkbox(
-//                        checked = isDone,
-//                        onCheckedChange = { isDone = it }
-//                    )
-//                }
-//
-//                val selectedDateText = datePickerState.selectedDateMillis?.let {
-//                    Instant.ofEpochMilli(it)
-//                        .atZone(ZoneId.systemDefault())
-//                        .toLocalDate()
-//                        .toString()
-//                } ?: "Select date"
-//                item {
-//                    Text("Deadline")
-//
-//                    OutlinedButton(
-//                        onClick = { showDialog.value = true },
-//                        modifier = Modifier.fillMaxWidth()
-//                    ) {
-//                        Text(selectedDateText)
-//                    }
-//                }
-//
-//            }
-//        }
-//    )
-//}
